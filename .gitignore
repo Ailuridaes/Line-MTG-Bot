@@ -1,0 +1,4 @@
+config.json
+package/*
+*.zip
+.DS_Store
