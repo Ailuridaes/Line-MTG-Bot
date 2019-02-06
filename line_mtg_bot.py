@@ -9,7 +9,7 @@ from linebot.exceptions import (
     InvalidSignatureError, LineBotApiError
 )
 from linebot.models import (
-    MessageEvent, TextMessage, TextSendMessage,
+    MessageEvent, TextMessage, TextSendMessage, ImageSendMessage
 )
 import mtg_api
 from api_errors import GetCardError
@@ -61,7 +61,7 @@ def handle_message(event):
             except GetCardError as e:
                 messages.append(TextSendMessage(text=e.message))
             else:
-                messages.append(TextSendMessage(text=card.name + '\n' + card.text))
+                messages.append(ImageSendMessage(card.image_uri, card.image_uri))
         start = content.find("[[", end) + 2
     if len(messages) > 0:
         try:

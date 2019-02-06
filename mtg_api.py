@@ -13,5 +13,5 @@ def get_card(cardname):
         else:
             error_message = f'No matches were found for "{cardname}". Please try again.'
         raise GetCardError(error_message)
-            
+
     return Card(resp.json())
