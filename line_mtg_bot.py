@@ -2,7 +2,6 @@ import boto3
 import botocore
 import logging
 import json
-import datetime
 from linebot import (
     LineBotApi, WebhookHandler
 )
@@ -12,6 +11,8 @@ from linebot.exceptions import (
 from linebot.models import (
     MessageEvent, TextMessage, TextSendMessage,
 )
+import mtg_api
+from api_errors import GetCardError
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -46,14 +47,31 @@ def lambda_handler(event, context):
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
-    try:
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text=event.message.text))
-    except LineBotApiError as e:
-        logger.error(e.status_code)
-        logger.error(e.error.message)
-        logger.error(e.error.details)
+    content = event.message.text
+    end = len(content)
+    start = content.find("[[") + 2
+    messages = []
+    while start > 1:
+        end = content.find("]]", start)
+        request = content[start:end]
+        logger.info("Request: " + request)
+        if len(request) > 2:
+            try:
+                card = mtg_api.get_card(request)
+            except GetCardError as e:
+                messages.append(TextSendMessage(text=e.message))
+            else:
+                messages.append(TextSendMessage(text=card.name + '\n' + card.text))
+        start = content.find("[[", end) + 2
+    if len(messages) > 0:
+        try:
+            line_bot_api.reply_message(
+                event.reply_token,
+                messages)
+        except LineBotApiError as e:
+            logger.error(e.status_code)
+            logger.error(e.error.message)
+            logger.error(e.error.details)
 
 @handler.default()
 def default(event):
