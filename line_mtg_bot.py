@@ -26,7 +26,7 @@ line_bot_api = LineBotApi(config['channel-access-token'])
 handler = WebhookHandler(config['channel-secret'])
 
 def lambda_handler(event, context):
-    
+
     # log event
     logger.info(event)
 
@@ -44,25 +44,30 @@ def lambda_handler(event, context):
 
     return 200
 
-
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     content = event.message.text
     end = len(content)
+
+    # Determine if message has request(s) for MTG Bot
     start = content.find("[[") + 2
-    messages = []
+    requests = []
     while start > 1:
         end = content.find("]]", start)
         request = content[start:end]
         logger.info("Request: " + request)
         if len(request) > 2:
-            try:
-                card = mtg_api.get_card(request)
-            except GetCardError as e:
-                messages.append(TextSendMessage(text=e.message))
-            else:
-                messages.append(ImageSendMessage(card.image_uri, card.image_uri))
+            requests.append(request)
         start = content.find("[[", end) + 2
+
+    # Generate response messages for requests
+    messages = [get_message_for_request(r) for r in requests]
+
+    # debug
+    for message in messages:
+        print(message.original_content_url)
+
+    # Send response(s)
     if len(messages) > 0:
         try:
             line_bot_api.reply_message(
@@ -76,3 +81,11 @@ def handle_message(event):
 @handler.default()
 def default(event):
     pass
+
+def get_message_for_request(request):
+    try:
+        card = mtg_api.get_card(request)
+    except GetCardError as e:
+        return TextSendMessage(text=e.message)
+    else:
+        return ImageSendMessage(card.image_uri, card.image_uri)
