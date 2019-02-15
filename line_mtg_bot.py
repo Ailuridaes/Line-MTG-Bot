@@ -63,10 +63,6 @@ def handle_message(event):
     # Generate response messages for requests
     messages = [get_message_for_request(r) for r in requests]
 
-    # debug
-    for message in messages:
-        print(message.original_content_url)
-
     # Send response(s)
     if len(messages) > 0:
         try:
@@ -83,9 +79,25 @@ def default(event):
     pass
 
 def get_message_for_request(request):
+    request_parts = request.split('|')
     try:
-        card = mtg_api.get_card(request)
+        if(request[0] == '?'):
+    
+            # Get card rulings
+            card = mtg_api.get_card(request_parts[0][1:])
+            rulings = mtg_api.get_card_ruling(card)
+            if(len(rulings) > 0):
+                # construct rulings message
+                message_text = f'Rulings for "{card.name}":'
+                for ruling in rulings:
+                    message_text += f'\n{ruling.date} by {ruling.source} - {ruling.text}'
+                return TextMessage(text=message_text)
+            else:
+                return TextSendMessage(text=f'No rulings were found for "{card.name}".')
+        else:
+    
+            # Get card image
+            card = mtg_api.get_card(request_parts[0], request_parts[1] if len(request_parts) > 1 else '')
+            return ImageSendMessage(card.image_uri, card.image_uri)
     except GetCardError as e:
         return TextSendMessage(text=e.message)
-    else:
-        return ImageSendMessage(card.image_uri, card.image_uri)
